@@ -1,24 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-// import users    from 'database/users.json'
-// import tokens    from 'database/tokens.json'
 import jwt from 'jsonwebtoken'
-import { writeFileSync } from "fs";
 import path from "path";
 import { TOKEN } from "@/constants";
 import { Database } from "@/app/database";
 import { compareSync } from 'bcrypt'
 import { formatDateToPostgres } from "@/app/utils";
 
-let tokenFile = path.join(process.cwd(), 'database', 'tokens.json');
-
 export async function POST(req: NextRequest) {
 
     const db = new Database()
-    
-    await  db.begin();
+
+    await db.begin();
 
     try {
-        
+
         let body = await req.json()
 
         const foundUser = await db.query('select u.id, u.username, u.password from users u where u.username = $1 limit 1;', [body.username]);
@@ -29,23 +24,23 @@ export async function POST(req: NextRequest) {
             password: string
         } = foundUser.rows[0]
 
-        if(!compareSync(body.password, userInfo.password)){
+        if (!compareSync(body.password, userInfo.password)) {
             throw Error('Usuário ou senha não conferem. Por favor, verifique suas credênciais.')
         }
 
         const user = {
             id: userInfo.id,
-           username: userInfo.username
+            username: userInfo.username
         }
 
         const token = jwt.sign({
             user
-        },TOKEN, {
+        }, TOKEN, {
             algorithm: 'HS256'
         })
 
         const dtNow = new Date();
-        
+
         await db.query('insert into access_tokens (token, user_id, expiration_date) values ($1, $2, $3)', [
             token,
             user.id,
@@ -53,19 +48,18 @@ export async function POST(req: NextRequest) {
         ]);
 
         await db.save()
-        
+
         return NextResponse.json({
             message: "Usuário autenticado!",
             user: user,
             token
         })
-        
-        
+
     } catch (error: any) {
         await db.rollback()
         return NextResponse.json({
             message: error.message
-        }, {status: 403})
+        }, { status: 403 })
     }
 
 }
