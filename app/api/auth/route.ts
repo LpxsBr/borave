@@ -7,6 +7,7 @@ import path from "path";
 import { TOKEN } from "@/constants";
 import { Database } from "@/app/database";
 import { compareSync } from 'bcrypt'
+import { formatDateToPostgres } from "@/app/utils";
 
 let tokenFile = path.join(process.cwd(), 'database', 'tokens.json');
 
@@ -18,11 +19,7 @@ export async function POST(req: NextRequest) {
 
     try {
         
-        
         let body = await req.json()
-
-        console.log({body});
-        
 
         const foundUser = await db.query('select u.id, u.username, u.password from users u where u.username = $1 limit 1;', [body.username]);
 
@@ -41,24 +38,20 @@ export async function POST(req: NextRequest) {
            username: userInfo.username
         }
 
-        
-
         const token = jwt.sign({
             user
         },TOKEN, {
             algorithm: 'HS256'
         })
 
-        // tokens.push({
-        //     token,
-        //     user: user.id,
-        //     status: 1,
-        //     created_in_dt: new Date().toLocaleDateString(),
-        //     created_in_hr: new Date().toLocaleTimeString()
-        // })
-
-        // writeFileSync(tokenFile, JSON.stringify(tokens))
+        const dtNow = new Date();
         
+        await db.query('insert into access_tokens (token, user_id, expiration_date) values ($1, $2, $3)', [
+            token,
+            user.id,
+            formatDateToPostgres(new Date(dtNow.getTime() + (1000 * 60 * 60 * 24)))
+        ]);
+
         await db.save()
         
         return NextResponse.json({

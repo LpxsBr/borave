@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFileSync } from "fs";
 import path from "path";
 import { Database } from "@/app/database";
+import { formatDateToPostgres } from "@/app/utils";
 
 // let tokenFile = path.join(process.cwd(), 'database', 'tokens.json');
 
@@ -26,8 +27,9 @@ export async function POST(req: NextRequest) {
         username: string,
         status: number
       }[]
-    } = await db.query('select t.token, t.status, t.user_id from access_tokens t where t.token = $1 and t.status = 1', [
-      access_token
+    } = await db.query('select t.token, t.status, t.user_id from access_tokens t where t.token = $1 and t.status = 1 and t.expiration_date >= $2', [
+      access_token,
+      formatDateToPostgres(new Date())
     ]);
 
     if(!(foundTokens.rows.length > 0)) throw new Error('Usuário não autênticado')

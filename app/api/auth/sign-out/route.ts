@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
       throw Error('Sem codigo de acesso definido');
     }
     
-    await db.query('update access_tokens t set t.status = 0 where t.token = $1', [
+    await db.query('update access_tokens set status = 0 where token = $1', [
       access_token
     ]);
 
